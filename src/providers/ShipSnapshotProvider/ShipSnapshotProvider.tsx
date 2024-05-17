@@ -1,7 +1,7 @@
 import React from "react";
 
 import { DogmaEngineContext } from "@/providers/DogmaEngineProvider";
-import { EveDataContext } from "@/providers/EveDataProvider";
+import { EveDataContext, TypeDogmaAttribute } from "@/providers/EveDataProvider";
 
 export interface ShipSnapshotItemAttributeEffect {
   operator: string;
@@ -75,6 +75,7 @@ interface ShipSnapshot {
   addModule: (typeId: number, slot: ShipSnapshotSlotsType) => void;
   removeModule: (flag: number) => void;
   addCharge: (chargeTypeId: number) => void;
+  setCharge: (chargeTypeId: number, flag: number) => void;
   removeCharge: (flag: number) => void;
   toggleDrones: (typeId: number, active: number) => void;
   removeDrones: (typeId: number) => void;
@@ -101,6 +102,7 @@ export const ShipSnapshotContext = React.createContext<ShipSnapshot>({
   addModule: () => {},
   removeModule: () => {},
   addCharge: () => {},
+  setCharge: () => {},
   removeCharge: () => {},
   toggleDrones: () => {},
   removeDrones: () => {},
@@ -154,6 +156,7 @@ export const ShipSnapshotProvider = (props: ShipSnapshotProps) => {
     addModule: () => {},
     removeModule: () => {},
     addCharge: () => {},
+    setCharge: () => {},
     removeCharge: () => {},
     toggleDrones: () => {},
     removeDrones: () => {},
@@ -285,13 +288,35 @@ export const ShipSnapshotProvider = (props: ShipSnapshotProps) => {
     });
   }, []);
 
+  const itemDogmaAttributes = React.useCallback(
+    (typeId: number): TypeDogmaAttribute => {
+      return eveData.typeDogma?.[typeId]?.dogmaAttributes || [];
+    },
+    [eveData],
+  );
+
+  const itemChargeSize = React.useCallback(
+    (typeId: number): number | undefined => {
+      return itemDogmaAttributes(typeId).find(
+        (attr) => attr.attributeID === eveData.attributeMapping?.chargeSize,
+      )?.value;
+    },
+    [eveData],
+  );
+
+  const itemGroupId = React.useCallback(
+    (typeId: number): number | undefined => {
+      return eveData.typeIDs?.[typeId]?.groupID;
+    },
+    [eveData],
+  );
+
+  const setCharge = React.useCallback((chargeTypeId: number, flag: number) => {}, []);
+
   const addCharge = React.useCallback(
     (chargeTypeId: number) => {
-      const chargeSize =
-        eveData.typeDogma?.[chargeTypeId]?.dogmaAttributes.find(
-          (attr) => attr.attributeID === eveData.attributeMapping?.chargeSize,
-        )?.value ?? -1;
-      const groupID = eveData.typeIDs?.[chargeTypeId]?.groupID ?? -1;
+      const chargeSize = itemChargeSize(chargeTypeId) ?? -1;
+      const groupID = itemGroupId(chargeTypeId) ?? -1;
 
       setCurrentFit((oldFit: EsiFit | undefined) => {
         if (oldFit === undefined) return undefined;
@@ -300,9 +325,7 @@ export const ShipSnapshotProvider = (props: ShipSnapshotProps) => {
 
         for (let item of oldFit.items) {
           /* If the module has size restrictions, ensure the charge matches. */
-          const moduleChargeSize = eveData.typeDogma?.[item.type_id]?.dogmaAttributes.find(
-            (attr) => attr.attributeID === eveData.attributeMapping?.chargeSize,
-          )?.value;
+          const moduleChargeSize = itemChargeSize(item.type_id);
           if (moduleChargeSize !== undefined && moduleChargeSize !== chargeSize) {
             newItems.push(item);
             continue;
@@ -444,6 +467,7 @@ export const ShipSnapshotProvider = (props: ShipSnapshotProps) => {
       addModule,
       removeModule,
       addCharge,
+      setCharge,
       removeCharge,
       toggleDrones,
       removeDrones,
@@ -457,6 +481,7 @@ export const ShipSnapshotProvider = (props: ShipSnapshotProps) => {
     addModule,
     removeModule,
     addCharge,
+    setCharge,
     removeCharge,
     toggleDrones,
     removeDrones,
